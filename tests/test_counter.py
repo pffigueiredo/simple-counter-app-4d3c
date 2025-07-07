@@ -1,14 +1,23 @@
 from nicegui.testing import User
 from nicegui import ui
+import pytest
+from app.database import reset_db
 
 
-async def test_counter_initial_state(user: User) -> None:
+@pytest.fixture()
+def fresh_db():
+    reset_db()
+    yield
+    reset_db()
+
+
+async def test_counter_initial_state(user: User, fresh_db) -> None:
     """Test counter starts at 0."""
     await user.open("/counter")
     await user.should_see("Count: 0")
 
 
-async def test_counter_increment(user: User) -> None:
+async def test_counter_increment(user: User, fresh_db) -> None:
     """Test incrementing the counter."""
     await user.open("/counter")
 
@@ -21,7 +30,7 @@ async def test_counter_increment(user: User) -> None:
     await user.should_see("Count: 2")
 
 
-async def test_counter_decrement(user: User) -> None:
+async def test_counter_decrement(user: User, fresh_db) -> None:
     """Test decrementing the counter."""
     await user.open("/counter")
 
@@ -35,7 +44,7 @@ async def test_counter_decrement(user: User) -> None:
     await user.should_see("Count: 1")
 
 
-async def test_counter_negative_values(user: User) -> None:
+async def test_counter_negative_values(user: User, fresh_db) -> None:
     """Test counter can go negative."""
     await user.open("/counter")
 
@@ -48,7 +57,7 @@ async def test_counter_negative_values(user: User) -> None:
     await user.should_see("Count: -2")
 
 
-async def test_counter_reset(user: User) -> None:
+async def test_counter_reset(user: User, fresh_db) -> None:
     """Test resetting the counter."""
     await user.open("/counter")
 
@@ -63,7 +72,7 @@ async def test_counter_reset(user: User) -> None:
     await user.should_see("Count: 0")
 
 
-async def test_counter_reset_from_negative(user: User) -> None:
+async def test_counter_reset_from_negative(user: User, fresh_db) -> None:
     """Test resetting counter from negative value."""
     await user.open("/counter")
 
@@ -77,7 +86,7 @@ async def test_counter_reset_from_negative(user: User) -> None:
     await user.should_see("Count: 0")
 
 
-async def test_counter_ui_elements_exist(user: User) -> None:
+async def test_counter_ui_elements_exist(user: User, fresh_db) -> None:
     """Test that all UI elements are present."""
     await user.open("/counter")
 
@@ -94,7 +103,7 @@ async def test_counter_ui_elements_exist(user: User) -> None:
     await user.should_see("Count: 0")
 
 
-async def test_index_page_navigation(user: User) -> None:
+async def test_index_page_navigation(user: User, fresh_db) -> None:
     """Test navigation from index page to counter."""
     await user.open("/")
 
@@ -107,7 +116,7 @@ async def test_index_page_navigation(user: User) -> None:
     await user.should_see("Count: 0")
 
 
-async def test_counter_multiple_operations(user: User) -> None:
+async def test_counter_multiple_operations(user: User, fresh_db) -> None:
     """Test multiple counter operations in sequence."""
     await user.open("/counter")
 
@@ -127,3 +136,26 @@ async def test_counter_multiple_operations(user: User) -> None:
 
     user.find(marker="increment").click()  # 0
     await user.should_see("Count: 0")
+
+
+async def test_counter_persistence_between_sessions(user: User, fresh_db) -> None:
+    """Test that counter value persists between page reloads."""
+    await user.open("/counter")
+
+    # Increment counter
+    user.find(marker="increment").click()
+    user.find(marker="increment").click()
+    user.find(marker="increment").click()
+    await user.should_see("Count: 3")
+
+    # Reload page - counter should maintain value
+    await user.open("/counter")
+    await user.should_see("Count: 3")
+
+    # Continue operations
+    user.find(marker="decrement").click()
+    await user.should_see("Count: 2")
+
+    # Reload again
+    await user.open("/counter")
+    await user.should_see("Count: 2")
